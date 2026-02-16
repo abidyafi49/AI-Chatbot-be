@@ -10,6 +10,7 @@ class Theme(Base):
     
 class Message(Base):
     __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, index=True)
     theme_id = Column(Integer, ForeignKey("themes.id"), index=True)
     role = Column(String(50))
     content = Column(Text, nullable=False)

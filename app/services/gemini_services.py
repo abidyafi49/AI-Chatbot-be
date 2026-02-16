@@ -16,11 +16,17 @@ class GeminiService:
         )
         
         self.model = generativeai.GenerativeModel(
-            model_name="models/gemini-1.5-flash",
+            model_name="gemini-2.5-flash-lite",
             system_instruction=self.system_instruction
         )
     
     async def generate_response(self, user_message: str, history: list = None):
-        chat = self.model.start_chat(history=history or [])
+        formatted_history = []
+        if history:
+            for msg in history:
+                role = "model" if msg.role == "assistant" else "user"
+                formatted_history.append({"role" : role, "parts": [msg.content]})
+                
+        chat = self.model.start_chat(history=formatted_history)
         response = await chat.send_message_async(user_message) # non streaming
         return response.text

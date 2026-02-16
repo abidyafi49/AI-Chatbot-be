@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from app.db.database import get_db
 from app.schemas.schemas import ChatRequest, Message
+from app.models.models import Message as MessageModel, Theme
 from app.services.gemini_services import GeminiService
 from datetime import datetime
 
@@ -9,24 +11,36 @@ router = APIRouter(
     prefix="/chat",
     tags=["Chat Interface"]
 )
-
 ai_service = GeminiService()
 
 @router.post("/send")
-async def send_message(request: ChatRequest):
-    # 1. Nanti di sini logic ambil history dari DB
-    # 2. Panggil Gemini API
-    # 3. Simpan ke DB
-    
-    try:
-        bot_response = await ai_service.generate_response(request.message)
+async def send_message(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+    if not request.theme_id:
+        new_theme = Theme(title= "New Conversation")
+        db.add(new_theme)
+        await db.commit()
+        await db.refresh()
+        theme_id = new_theme.id
+    else:
+        theme_id = request.theme_id
         
-        return {
-            "id": 1,
-            "theme_id": request.theme_id or 1,
-            "role" : "assistant",
-            "content" : bot_response,
-            "created_at": datetime.now()
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    result = await db.execute(
+        select(MessageModel)
+        .where(MessageModel.theme_id == theme_id)
+        .order_by(MessageModel.created_at.asc())
+        .limit(10)
+    )
+    
+    history = result.scalars().all()
+    
+    user_msg = MessageModel(theme_id = theme_id, role = "user", content = request.message)
+    db.add(user_msg)
+    
+    bot_content = await ai_service.generate_response(request.message, history)
+    bot_msg = MessageModel(theme_id=theme_id, role="assistant", content=bot_content)
+    db.add(bot_msg)
+    
+    await db.commit()
+    await db.refresh(bot_msg)
+
+    return bot_msg
