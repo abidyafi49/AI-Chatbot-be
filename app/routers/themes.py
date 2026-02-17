@@ -13,7 +13,6 @@ router = APIRouter(prefix="/themes", tags=["Theme Management"])
 async def get_all_themes(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Theme)
-        .options(selectinload(Theme.messages))
         .order_by(Theme.created_at.desc())
     )
     return result.scalars().all()

@@ -1,46 +1,20 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from app.db.database import get_db
-from app.schemas.schemas import ChatRequest, Message
-from app.models.models import Message as MessageModel, Theme
-from app.services.gemini_services import GeminiService
-from datetime import datetime
+from app.dto.chatDto import ChatRequestDTO, ChatResponseDTO
+from app.services.chatManager import ChatManager
 
-router = APIRouter(
-    prefix="/chat",
-    tags=["Chat Interface"]
-)
-ai_service = GeminiService()
+router = APIRouter(prefix="/chat", tags=["Chat Interface"])
 
-@router.post("/send")
-async def send_message(request: ChatRequest, db: AsyncSession = Depends(get_db)):
-    if not request.theme_id:
-        new_theme = Theme(title= "New Conversation")
-        db.add(new_theme)
-        await db.commit()
-        await db.refresh()
-        theme_id = new_theme.id
-    else:
-        theme_id = request.theme_id
-        
-    result = await db.execute(
-        select(MessageModel)
-        .where(MessageModel.theme_id == theme_id)
-        .order_by(MessageModel.created_at.asc())
-        .limit(10)
+@router.post("/send", response_model=ChatResponseDTO)
+async def send_message(request: ChatRequestDTO, db: AsyncSession = Depends(get_db)):
+    # Inisialisasi manager dengan session DB
+    manager = ChatManager(db)
+    
+    # Jalankan proses chat
+    result = await manager.process_chat(
+        theme_id=request.theme_id, 
+        message=request.message
     )
     
-    history = result.scalars().all()
-    
-    user_msg = MessageModel(theme_id = theme_id, role = "user", content = request.message)
-    db.add(user_msg)
-    
-    bot_content = await ai_service.generate_response(request.message, history)
-    bot_msg = MessageModel(theme_id=theme_id, role="assistant", content=bot_content)
-    db.add(bot_msg)
-    
-    await db.commit()
-    await db.refresh(bot_msg)
-
-    return bot_msg
+    return result # FastAPI otomatis convert Model ke DTO karena response_model

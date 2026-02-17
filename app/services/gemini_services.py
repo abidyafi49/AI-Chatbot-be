@@ -30,3 +30,13 @@ class GeminiService:
         chat = self.model.start_chat(history=formatted_history)
         response = await chat.send_message_async(user_message) # non streaming
         return response.text
+    
+    async def summarize_title(self, first_message: str) -> str:
+        prompt = (
+            f"Buatkan judul singkat maksimal 5 kata dalam bahasa indonesia "
+            f"yang merangkum pesan berikut untuk sebuah chat: '{first_message}'"
+        )
+        
+        response  = await self.model.generate_content_async(prompt)
+        title = response.text.strip().replace('"','').replace('.','')
+        return title
