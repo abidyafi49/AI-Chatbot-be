@@ -40,3 +40,18 @@ class GeminiService:
         response  = await self.model.generate_content_async(prompt)
         title = response.text.strip().replace('"','').replace('.','')
         return title
+    
+    async def generate_streaming_response(self, user_message: str, history: list = None):
+        formatted_history = []
+        if history:
+            for msg in history:
+                role = "model" if msg.role == "assistant" else "user"
+                formatted_history.append({"role": role, "parts": [msg.content]})
+        
+        chat = self.model.start_chat(history=formatted_history)
+        
+        response = await chat.send_message_async(user_message, stream=True)
+        
+        async for chunk in response:
+            if chunk.text:
+                yield chunk.text
