@@ -31,14 +31,26 @@ class GeminiService:
         response = await chat.send_message_async(user_message) # non streaming
         return response.text
     
-    async def summarize_title(self, first_message: str) -> str:
-        prompt = (
-            f"Buatkan judul singkat maksimal 5 kata dalam bahasa indonesia "
-            f"yang merangkum pesan berikut untuk sebuah chat: '{first_message}'"
-        )
+    async def summarize_title(self, first_message: str):
+        # Buat prompt yang sangat ketat
+        prompt = f"""
+        Tugas: Berikan SATU judul singkat (maksimal 5 kata) untuk percakapan yang diawali dengan pesan: "{first_message}"
+        Aturan:
+        1. JANGAN berikan pilihan.
+        2. JANGAN pakai tanda kutip.
+        3. LANGSUNG berikan judulnya saja.
+        4. Gunakan Bahasa sesuai dengan yang digunakan chat.
+        """
         
-        response  = await self.model.generate_content_async(prompt)
-        title = response.text.strip().replace('"','').replace('.','')
+        # Panggil model Gemini
+        response = self.model.generate_content(prompt)
+        
+        # Bersihkan hasilnya (hapus spasi atau baris baru yang nggak perlu)
+        title = response.text.strip()
+        
+        if "\n" in title:
+            title = title.split("\n")[0].replace("*", "").strip()
+            
         return title
     
     async def generate_streaming_response(self, user_message: str, history: list = None):

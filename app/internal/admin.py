@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, Date
 from app.db.database import get_db
-from app.models.models import Theme, Message
+from app.models.models import Message
+from app.models.models import Theme
 from datetime import datetime, date
 from app.core.config import ADMIN_KEY
 
