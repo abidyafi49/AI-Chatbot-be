@@ -67,3 +67,16 @@ class GeminiService:
         async for chunk in response:
             if chunk.text:
                 yield chunk.text
+                
+    async def get_simple_category(self, text: str):
+        prompt = f"""
+        Tugas: Kategorikan percakapan ini ke dalam SATU topik besar.
+        Pilihan utama: Pemrograman, Bisnis, Kesehatan, Pendidikan, Hiburan.
+        Jika tidak masuk kategori di atas, buat kategori baru maksimal 1 kata.
+        
+        Isi Percakapan: "{text}"
+        
+        Balas HANYA dengan nama kategorinya saja.
+        """
+        response = await self.model.generate_content(prompt)
+        return response.text.strip()

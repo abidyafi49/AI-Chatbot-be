@@ -44,6 +44,15 @@ class ThemeResponseDTO(BaseModel):
     title: str
     owner_id: int
     created_at: datetime
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        
+class CategoryDTO(BaseModel):
+    id: int
+    name: str
 
     class Config:
         from_attributes = True

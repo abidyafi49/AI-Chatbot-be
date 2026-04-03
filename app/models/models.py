@@ -11,6 +11,7 @@ class User(Base):
     
     # Relasi ke Tema
     themes = relationship("Theme", back_populates="owner")
+    categories = relationship("Category", back_populates="owner")
 
 class Theme(Base):
     __tablename__ = "themes"
@@ -21,6 +22,8 @@ class Theme(Base):
 
     owner = relationship("User", back_populates="themes")
     messages = relationship("Message", back_populates="theme", cascade="all, delete-orphan")
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    category = relationship("Category", back_populates="themes")
 
 class Message(Base):
     __tablename__ = "messages"
@@ -31,3 +34,13 @@ class Message(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     theme = relationship("Theme", back_populates="messages")
+    
+class Category(Base):
+    __tablename__ = "categories"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), index=True)
+
+    # Relasi
+    owner = relationship("User", back_populates="categories")
+    themes = relationship("Theme", back_populates="category")
