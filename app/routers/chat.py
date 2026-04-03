@@ -13,9 +13,9 @@ router = APIRouter(prefix="/chat", tags=["Chat Interface"])
 async def send_message(
     request: ChatRequestDTO, 
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Satpam beraksi di sini!
+    current_user: User = Depends(get_current_user)
 ):
-    # Kirim current_user ke manager agar diproses sesuai identitasnya
+
     manager = ChatManager(db, current_user.id)
     
     result = await manager.process_chat(
@@ -31,7 +31,6 @@ async def stream_message(request: ChatRequestDTO, db: AsyncSession = Depends(get
     
     async def event_generator():
         async for data in manager.process_streaming_chat(request.theme_id, request.message):
-            # Format SSE: 'data: <content>\n\n'
             yield f"data: {data}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

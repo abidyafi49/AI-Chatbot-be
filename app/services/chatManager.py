@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from app.models.models import Message as MessageModel
 from app.services.gemini_services import GeminiService
-from app.models.models import User, Theme
+from app.models.models import User, Theme, Category
 from fastapi import HTTPException
 from typing import Optional
 import json
@@ -116,3 +116,40 @@ class ChatManager:
             raise HTTPException(status_code=404, detail="Tema tidak ditemukan atau akses ditolak")
             
         return theme
+    
+    async def auto_categorize_theme(self, theme_id: int):
+        # 1. Ambil 5 pesan pertama dari user untuk dianalisis
+        res = await self.db.execute(
+            select(MessageModel.content)
+            .where(MessageModel.theme_id == theme_id, MessageModel.role == "user")
+            .limit(5)
+        )
+        user_messages = res.scalars().all()
+        combined_text = " ".join(user_messages)
+
+        if not combined_text: return
+
+        # 2. Tanya Gemini untuk Label Topik
+        category_name = await self.ai_service.get_simple_category(combined_text)
+        category_name = category_name.strip().title()
+
+        # 3. Cek apakah kategori sudah ada di DB user tersebut
+        res_cat = await self.db.execute(
+            select(Category).where(Category.name == category_name, Category.owner_id == self.user_id)
+        )
+        category = res_cat.scalar_one_or_none()
+
+        # 4. Jika belum ada, buat kategori baru
+        if not category:
+            category = Category(name=category_name, owner_id=self.user_id)
+            self.db.add(category)
+            await self.db.commit()
+            await self.db.refresh(category)
+
+        # 5. Update Tema dengan ID Kategori tersebut
+        res_theme = await self.db.execute(select(Theme).where(Theme.id == theme_id))
+        theme = res_theme.scalar_one()
+        theme.category_id = category.id
+        
+        await self.db.commit()
+        return category_name
